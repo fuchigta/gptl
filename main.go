@@ -23,55 +23,21 @@ type Config struct {
 	MaxTokens uint   `yaml:"max_tokens"`
 }
 
-var providers = []Provider{
-	&OpenAIProvider{
-		Name:     "openai",
-		Models:   []string{"gpt-3.5-turbo"},
-		Endpoint: "https://api.openai.com/v1",
-	},
-	&AzureOpenAIProvider{
-		OpenAIProvider: &OpenAIProvider{
-			Name:   "azure-openai",
-			Models: []string{"gpt-35-turbo"},
-		},
-	},
-	&ClaudeProvider{},
-}
-
-var configPath = filepath.Join(os.Getenv("HOME"), ".gptl", "config.yml")
-var templateDirPath = filepath.Join(os.Getenv("HOME"), ".gptl", "template")
-var historyDirPath = filepath.Join(os.Getenv("HOME"), ".gptl", "history")
-
-func loadProvider() (Provider, error) {
+func loadProvider(configPath string, historyDirPath string) (Provider, error) {
 	f, err := os.Open(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("can't load config[%s]: %s", configPath, err)
 	}
 	defer f.Close()
 
-	config := Config{
-		Provider: providers[0].GetName(),
-		Endpoint: providers[0].GetEndpoint(),
-		ApiKey:   "",
-		Model:    providers[0].GetModels()[0],
-	}
-
+	var config Config
 	if err := yaml.NewDecoder(f).Decode(&config); err != nil {
 		return nil, fmt.Errorf("can't load config[%s]: %s", configPath, err)
 	}
 
-	if config.Provider == "" || config.Endpoint == "" || config.ApiKey == "" || config.Model == "" {
-		return nil, fmt.Errorf("config fileds required")
-	}
+	historyRepository, _ := NewHistoryRepository(historyDirPath)
 
-	for _, provider := range providers {
-		if provider.GetName() == config.Provider {
-			provider.SetConfig(config)
-			return provider, nil
-		}
-	}
-
-	return nil, fmt.Errorf("provider(%s) not exists", config.Provider)
+	return NewProvider(config, historyRepository)
 }
 
 func exitErrBy(f string, args ...interface{}) int {
@@ -81,21 +47,20 @@ func exitErrBy(f string, args ...interface{}) int {
 
 func run() int {
 	var (
-		inputPath  = ""
-		outputPath = ""
-		tmpl       = ""
-		history    = ""
+		historyDirPath = filepath.Join(os.Getenv("HOME"), ".gptl", "history")
+		configPath     = filepath.Join(os.Getenv("HOME"), ".gptl", "config.yaml")
+		inputPath      = ""
+		outputPath     = ""
+		history        = ""
 	)
 	flag.StringVar(&configPath, "C", configPath, "config file path")
-	flag.StringVar(&templateDirPath, "T", templateDirPath, "template directory path")
 	flag.StringVar(&historyDirPath, "H", historyDirPath, "history directory path")
 	flag.StringVar(&inputPath, "i", inputPath, "input file path")
 	flag.StringVar(&outputPath, "o", outputPath, "output file path")
-	flag.StringVar(&tmpl, "t", tmpl, "request template name")
 	flag.StringVar(&history, "h", history, "history name")
 	flag.Parse()
 
-	provider, err := loadProvider()
+	provider, err := loadProvider(configPath, historyDirPath)
 	if err != nil {
 		return exitErrBy(err.Error())
 	}
@@ -128,12 +93,8 @@ func run() int {
 
 	option := []ChatOption{}
 
-	if tmpl != "" {
-		option = append(option, WithTemplate(tmpl))
-	}
-
 	if history != "" {
-		option = append(option, WithHistoryTitle(history))
+		option = append(option, WithHistory(history))
 	}
 
 	if err := provider.Chat(input, output, option...); err != nil {

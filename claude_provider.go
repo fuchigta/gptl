@@ -7,45 +7,19 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
-
-	"gopkg.in/yaml.v2"
 )
 
 type ClaudeProvider struct {
-	config Config
-}
-
-func (c ClaudeProvider) loadMessages(options ChatOptions) ([]map[string]interface{}, error) {
-	var content []byte
-	var err error
-
-	if options.History != "" {
-		content, err = LoadHistory(c.GetName(), options.History+".yaml")
-	} else if options.Template != "" {
-		content, err = os.ReadFile(filepath.Join(templateDirPath, c.GetName(), fmt.Sprintf("%s.yaml", options.Template)))
-	} else {
-		return []map[string]interface{}{}, nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	var messages []map[string]interface{}
-	if err := yaml.Unmarshal(content, &messages); err != nil {
-		return nil, err
-	}
-
-	return messages, nil
+	config            Config
+	historyRepository HisotryRepository
 }
 
 // Chat implements Provider.
 func (c *ClaudeProvider) Chat(input io.Reader, output io.Writer, option ...ChatOption) error {
 	options := NewChatOptions(option...)
-	messages, err := c.loadMessages(options)
-	if err != nil {
+
+	messages := []map[string]interface{}{}
+	if err := c.historyRepository.LoadHistory(c.config.Provider, options.History, &messages); err != nil {
 		return err
 	}
 
@@ -71,7 +45,7 @@ func (c *ClaudeProvider) Chat(input io.Reader, output io.Writer, option ...ChatO
 		"max_tokens": c.config.MaxTokens,
 	}
 
-	chatCompletationPath, err := url.JoinPath(c.GetEndpoint(), "messages")
+	chatCompletationPath, err := url.JoinPath(c.config.Endpoint, "messages")
 	if err != nil {
 		return err
 	}
@@ -125,40 +99,32 @@ func (c *ClaudeProvider) Chat(input io.Reader, output io.Writer, option ...ChatO
 		})
 	}
 
-	historyContent, err := yaml.Marshal(messages)
-	if err != nil {
-		return err
-	}
-
-	if err := SaveHistory(c.GetName(), options.History+".yaml", historyContent); err != nil {
+	if err := c.historyRepository.SaveHistory(c.config.Provider, options.History, messages); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// GetEndpoint implements Provider.
-func (c *ClaudeProvider) GetEndpoint() string {
-	return "https://api.anthropic.com/v1"
-}
-
-// GetModels implements Provider.
-func (c *ClaudeProvider) GetModels() []string {
-	return []string{
-		"claude-3-5-sonnet-20240620",
+func NewClaudeProvider(config Config, historyRepository HisotryRepository) (Provider, error) {
+	if config.Endpoint == "" {
+		config.Endpoint = "https://api.anthropic.com/v1"
 	}
-}
 
-// GetName implements Provider.
-func (c *ClaudeProvider) GetName() string {
-	return "claude"
-}
-
-// SetConfig implements Provider.
-func (c *ClaudeProvider) SetConfig(config Config) {
-	c.config = config
-
-	if c.config.MaxTokens <= 0 {
-		c.config.MaxTokens = 1024
+	if config.Model == "" {
+		config.Model = "claude-3-5-sonnet-20240620"
 	}
+
+	if config.MaxTokens <= 0 {
+		config.MaxTokens = 1024
+	}
+
+	return &ClaudeProvider{
+		config:            config,
+		historyRepository: historyRepository,
+	}, nil
+}
+
+func init() {
+	RegisterProviderFactory("claude", NewClaudeProvider)
 }

@@ -3,39 +3,54 @@ package main
 import (
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v2"
 )
 
-func SaveHistory(provider string, historyFileName string, content []byte) error {
-	dir := filepath.Join(historyDirPath, provider)
-
-	err := os.MkdirAll(dir, 0755)
-	if err != nil && !os.IsExist(err) {
-		return err
-	}
-
-	if err := os.WriteFile(filepath.Join(dir, historyFileName), content, 0600); err != nil {
-		return err
-	}
-
-	return nil
+type HisotryRepository struct {
+	historyDirPath string
 }
 
-func LoadHistory(provider string, historyFileName string) ([]byte, error) {
-	dir := filepath.Join(historyDirPath, provider)
+func NewHistoryRepository(historyDirPath string) (HisotryRepository, error) {
+	return HisotryRepository{
+		historyDirPath: historyDirPath,
+	}, nil
+}
+
+func (h HisotryRepository) SaveHistory(provider string, history string, messages interface{}) error {
+	dir := filepath.Join(h.historyDirPath, provider)
 
 	err := os.MkdirAll(dir, 0755)
 	if err != nil && !os.IsExist(err) {
-		return nil, err
+		return err
 	}
 
-	content, err := os.ReadFile(filepath.Join(dir, historyFileName))
+	f, err := os.Create(filepath.Join(dir, history+".yaml"))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return yaml.NewEncoder(f).Encode(messages)
+}
+
+func (h HisotryRepository) LoadHistory(provider string, history string, messages interface{}) error {
+	dir := filepath.Join(h.historyDirPath, provider)
+
+	err := os.MkdirAll(dir, 0755)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	f, err := os.Open(filepath.Join(dir, history+".yaml"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []byte{}, nil
+			return nil
 		}
 
-		return nil, err
+		return err
 	}
+	defer f.Close()
 
-	return content, nil
+	return yaml.NewDecoder(f).Decode(messages)
 }
