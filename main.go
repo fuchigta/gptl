@@ -46,9 +46,14 @@ func exitErrBy(f string, args ...interface{}) int {
 }
 
 func run() int {
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = os.Getenv("USERPROFILE")
+	}
+
 	var (
-		historyDirPath = filepath.Join(os.Getenv("HOME"), ".gptl", "history")
-		configPath     = filepath.Join(os.Getenv("HOME"), ".gptl", "config.yaml")
+		historyDirPath = filepath.Join(home, ".gptl", "history")
+		configPath     = filepath.Join(home, ".gptl", "config.yaml")
 		inputPath      = ""
 		outputPath     = ""
 		history        = ""
