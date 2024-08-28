@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 
@@ -52,5 +53,9 @@ func (h HisotryRepository) LoadHistory(provider string, history string, messages
 	}
 	defer f.Close()
 
-	return yaml.NewDecoder(f).Decode(messages)
+	if err := yaml.NewDecoder(f).Decode(messages); err != io.EOF {
+		return err
+	}
+
+	return nil
 }
