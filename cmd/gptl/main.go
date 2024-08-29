@@ -7,10 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"slices"
-
-	"golang.org/x/exp/maps"
-
+	"github.com/fuchigta/gptl"
 	"github.com/manifoldco/promptui"
 	"gopkg.in/yaml.v2"
 )
@@ -20,29 +17,21 @@ const (
 	exitErr
 )
 
-type Config struct {
-	Provider  string `yaml:"provider"`
-	Endpoint  string `yaml:"endpoint"`
-	ApiKey    string `yaml:"api_key"`
-	Model     string `yaml:"model"`
-	MaxTokens uint   `yaml:"max_tokens,omitempty"`
-}
-
-func loadProvider(configPath string, historyDirPath string) (Provider, error) {
+func loadProvider(configPath string, historyDirPath string) (gptl.Provider, error) {
 	f, err := os.Open(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("can't load config[%s]: %s", configPath, err)
 	}
 	defer f.Close()
 
-	var config Config
+	var config gptl.Config
 	if err := yaml.NewDecoder(f).Decode(&config); err != nil {
 		return nil, fmt.Errorf("can't load config[%s]: %s", configPath, err)
 	}
 
-	historyRepository, _ := NewHistoryRepository(historyDirPath)
+	historyRepository, _ := gptl.NewHistoryRepository(historyDirPath)
 
-	return NewProvider(config, historyRepository)
+	return gptl.NewProvider(config, historyRepository)
 }
 
 func exitErrBy(f string, args ...interface{}) int {
@@ -76,13 +65,11 @@ func doInit(configPath string) int {
 		return exitOk
 	}
 
-	config := Config{}
+	config := gptl.Config{}
 
-	providers := maps.Keys(providerFactories)
-	slices.Sort(providers)
 	providerSelect := promptui.Select{
 		Label:        "provider",
-		Items:        providers,
+		Items:        gptl.Providers(),
 		HideSelected: true,
 	}
 
@@ -196,10 +183,10 @@ func run() int {
 		output = f
 	}
 
-	option := []ChatOption{}
+	option := []gptl.ChatOption{}
 
 	if history != "" {
-		option = append(option, WithHistory(history))
+		option = append(option, gptl.WithHistory(history))
 	}
 
 	if err := provider.Chat(input, output, option...); err != nil {

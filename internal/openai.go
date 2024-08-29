@@ -1,4 +1,4 @@
-package main
+package gptl
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/fuchigta/gptl"
 )
 
 type OpenAIMessage struct {
@@ -34,13 +36,13 @@ type OpenAIRes struct {
 	Error   OpenAIResError    `json:"error"`
 }
 
-type OpenAIProvider struct {
-	config            Config
-	hisotryRepository HisotryRepository
+type OpenAI struct {
+	config            gptl.Config
+	hisotryRepository gptl.HisotryRepository
 }
 
-func (p OpenAIProvider) Chat(input io.Reader, output io.Writer, option ...ChatOption) error {
-	options := NewChatOptions(option...)
+func (p OpenAI) Chat(input io.Reader, output io.Writer, option ...gptl.ChatOption) error {
+	options := gptl.NewChatOptions(option...)
 
 	messages := []OpenAIMessage{}
 	if err := p.hisotryRepository.LoadHistory(p.config.Provider, options.History, &messages); err != nil {
@@ -115,7 +117,7 @@ func (p OpenAIProvider) Chat(input io.Reader, output io.Writer, option ...ChatOp
 	return nil
 }
 
-func NewOpenAIProvider(config Config, historyRepository HisotryRepository) (Provider, error) {
+func NewOpenAI(config gptl.Config, historyRepository gptl.HisotryRepository) (gptl.Provider, error) {
 	if config.Endpoint == "" {
 		config.Endpoint = "https://api.openai.com/v1"
 	}
@@ -124,12 +126,12 @@ func NewOpenAIProvider(config Config, historyRepository HisotryRepository) (Prov
 		config.Model = "gpt-3.5-turbo"
 	}
 
-	return &OpenAIProvider{
+	return &OpenAI{
 		config:            config,
 		hisotryRepository: historyRepository,
 	}, nil
 }
 
 func init() {
-	RegisterProviderFactory("openai", NewOpenAIProvider)
+	gptl.RegisterProviderFactory("openai", NewOpenAI)
 }

@@ -1,4 +1,4 @@
-package main
+package gptl
 
 import (
 	"bytes"
@@ -7,15 +7,17 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/fuchigta/gptl"
 )
 
-type AzureOpenAIProvider struct {
-	config            Config
-	historyRepository HisotryRepository
+type AzureOpenAI struct {
+	config            gptl.Config
+	historyRepository gptl.HisotryRepository
 }
 
-func (p AzureOpenAIProvider) Chat(input io.Reader, output io.Writer, option ...ChatOption) error {
-	options := NewChatOptions(option...)
+func (p AzureOpenAI) Chat(input io.Reader, output io.Writer, option ...gptl.ChatOption) error {
+	options := gptl.NewChatOptions(option...)
 
 	messages := []OpenAIMessage{}
 	err := p.historyRepository.LoadHistory(p.config.Provider, options.History, &messages)
@@ -94,17 +96,17 @@ func (p AzureOpenAIProvider) Chat(input io.Reader, output io.Writer, option ...C
 	return nil
 }
 
-func NewAzureOpenAIProvider(config Config, historyRepository HisotryRepository) (Provider, error) {
+func NewAzureOpenAI(config gptl.Config, historyRepository gptl.HisotryRepository) (gptl.Provider, error) {
 	if config.Model == "" {
 		config.Model = "gpt-4o-mini"
 	}
 
-	return &AzureOpenAIProvider{
+	return &AzureOpenAI{
 		config:            config,
 		historyRepository: historyRepository,
 	}, nil
 }
 
 func init() {
-	RegisterProviderFactory("azure-openai", NewAzureOpenAIProvider)
+	gptl.RegisterProviderFactory("azure-openai", NewAzureOpenAI)
 }

@@ -1,9 +1,12 @@
-package main
+package gptl
 
 import (
 	"fmt"
 	"io"
+	"slices"
 	"time"
+
+	"golang.org/x/exp/maps"
 )
 
 type ChatOptions struct {
@@ -52,4 +55,11 @@ func NewProvider(config Config, historyRepository HisotryRepository) (Provider, 
 	}
 
 	return factory(config, historyRepository)
+}
+
+func Providers() []string {
+	providers := maps.Keys(providerFactories)
+	slices.Sort(providers)
+
+	return providers
 }

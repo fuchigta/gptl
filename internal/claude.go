@@ -1,4 +1,4 @@
-package main
+package gptl
 
 import (
 	"bytes"
@@ -7,16 +7,18 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/fuchigta/gptl"
 )
 
-type ClaudeProvider struct {
-	config            Config
-	historyRepository HisotryRepository
+type Claude struct {
+	config            gptl.Config
+	historyRepository gptl.HisotryRepository
 }
 
 // Chat implements Provider.
-func (c *ClaudeProvider) Chat(input io.Reader, output io.Writer, option ...ChatOption) error {
-	options := NewChatOptions(option...)
+func (c *Claude) Chat(input io.Reader, output io.Writer, option ...gptl.ChatOption) error {
+	options := gptl.NewChatOptions(option...)
 
 	messages := []map[string]interface{}{}
 	if err := c.historyRepository.LoadHistory(c.config.Provider, options.History, &messages); err != nil {
@@ -106,7 +108,7 @@ func (c *ClaudeProvider) Chat(input io.Reader, output io.Writer, option ...ChatO
 	return nil
 }
 
-func NewClaudeProvider(config Config, historyRepository HisotryRepository) (Provider, error) {
+func NewClaude(config gptl.Config, historyRepository gptl.HisotryRepository) (gptl.Provider, error) {
 	if config.Endpoint == "" {
 		config.Endpoint = "https://api.anthropic.com/v1"
 	}
@@ -119,12 +121,12 @@ func NewClaudeProvider(config Config, historyRepository HisotryRepository) (Prov
 		config.MaxTokens = 1024
 	}
 
-	return &ClaudeProvider{
+	return &Claude{
 		config:            config,
 		historyRepository: historyRepository,
 	}, nil
 }
 
 func init() {
-	RegisterProviderFactory("claude", NewClaudeProvider)
+	gptl.RegisterProviderFactory("claude", NewClaude)
 }
