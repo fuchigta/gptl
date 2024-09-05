@@ -1,4 +1,4 @@
-package gptl
+package provider
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/fuchigta/gptl"
+	gptl "github.com/fuchigta/gptl/internal"
 )
 
 type Claude struct {
