@@ -1,4 +1,4 @@
-package gptl
+package internal
 
 import (
 	"fmt"

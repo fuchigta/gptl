@@ -9,6 +9,7 @@ import (
 
 	gptl "github.com/fuchigta/gptl/internal"
 	_ "github.com/fuchigta/gptl/internal/provider"
+
 	"github.com/manifoldco/promptui"
 	"gopkg.in/yaml.v2"
 )

@@ -1,4 +1,4 @@
-package gptl
+package internal
 
 type Config struct {
 	Provider  string `yaml:"provider"`
