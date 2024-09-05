@@ -4,8 +4,5 @@
 !*/
 *.exe
 
-# yaml
-*.yaml
-
-# history
-/history
+# gorelease dist
+dist/
