@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 
 	gptl "github.com/fuchigta/gptl/internal"
 	_ "github.com/fuchigta/gptl/internal/provider"
+	"golang.org/x/term"
 
 	"github.com/manifoldco/promptui"
 	"gopkg.in/yaml.v2"
@@ -161,7 +163,28 @@ func run() int {
 
 	var input io.Reader
 	if inputPath == "" {
-		input = os.Stdin
+		if flag.NArg() != 0 {
+			buffer := bytes.Buffer{}
+			for _, arg := range flag.Args() {
+				buffer.WriteString(arg + "\n")
+			}
+			input = &buffer
+		} else {
+			if term.IsTerminal(int(os.Stdin.Fd())) {
+				messagePrompt := promptui.Prompt{
+					Label: "message",
+				}
+
+				message, err := messagePrompt.Run()
+				if err != nil {
+					return exitErrBy(err.Error())
+				}
+
+				input = bytes.NewBufferString(message)
+			} else {
+				input = os.Stdin
+			}
+		}
 	} else {
 		f, err := os.Open(inputPath)
 		if err != nil {
